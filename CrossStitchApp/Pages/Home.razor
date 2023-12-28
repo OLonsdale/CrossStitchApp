@@ -1,0 +1,277 @@
+﻿@page "/"
+@using CrossStitchApp.Models
+@using System.Text.Json
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Cross Stitch App</PageTitle>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+<style>
+    html {
+        background-color: @backgroundColor;
+        font-family: sans-serif;
+    }
+
+    table {
+        border-spacing: 0;
+        border-collapse: collapse;
+    }
+
+    td {
+
+        @(showGrid ? $"border: solid {gridColor} 1px;" : "")
+        min-width: @(cellSize)px;
+        height: @(cellSize)px;
+    }
+
+    button {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 30px;
+        height: 30px;
+        color: @gridColor;
+        background-color: @backgroundColor;
+    }
+
+    .top-bar-text {
+        color: @gridColor;
+        margin-left: 1ch;
+        margin-right: 1ch;
+    }
+
+    .stitched {
+        background-image: url(/cross.svg) !important;
+        background-size: 100% 100%;
+        background-repeat: no-repeat !important;
+        background-position: center !important;
+    }
+</style>
+
+<script>
+    window.CellClicked = (x, y) => {
+        DotNet.invokeMethodAsync('CrossStitchApp', 'CellClicked', x, y)
+    };
+</script>
+
+<script>
+    window.downloadFileFromStream = async (fileName, contentStreamReference) => {
+        const arrayBuffer = await contentStreamReference.arrayBuffer();
+        const blob = new Blob([arrayBuffer]);
+        const url = URL.createObjectURL(blob);
+        const anchorElement = document.createElement('a');
+        anchorElement.href = url;
+        anchorElement.download = fileName ?? '';
+        anchorElement.click();
+        anchorElement.remove();
+        URL.revokeObjectURL(url);
+    }
+</script>
+
+<span style="display:flex; flex-direction:row; ">
+    <button @onclick="@(() => ResetGrid())"><i class="material-icons">restart_alt</i></button>
+
+    <button disabled="@(gameState == "draw")" @onclick="@(() => gameState = "draw")"><i class="material-icons">brush</i></button>
+    <button disabled="@(gameState == "stitch")" @onclick="@(() => gameState = "stitch")"><i class="material-icons">grid_4x4</i></button>
+
+    <span />
+    @foreach(var colorStr in colours)
+    {
+        <button disabled="@(color == colorStr)" style="background-color: @colorStr" @onclick="@(() => color = colorStr)" />
+    }
+
+    <input type="color" @bind-value="color" />
+    <button @onclick="@(() => colours.Add(color))"><i class="material-icons">save</i></button>
+    <button @onclick="@(() => colours.Remove(color))"><i class="material-icons">delete</i></button>
+
+    <button disabled="@(pickerActive)" @onclick="@(() => pickerActive = !pickerActive)"><i class="material-icons">colorize</i></button>
+
+
+
+    <button style="margin-left: 2ch; margin-right: 2ch;" @onclick="@(() => showSettings = !showSettings)"><i class="material-icons">settings</i></button>
+
+    @if (showSettings)
+    {
+
+        <span class="top-bar-text">Height:</span>
+        <input type="number" min="1" max="500" @bind-value="gridHeight" />
+        <span class="top-bar-text">Width:</span>
+        <input type="number" min="1" max="500" @bind-value="gridWidth" />
+
+        <span class="top-bar-text">Cell Size:</span>
+        <input type="number" min="1" max="50" @bind-value="cellSize" />
+
+        <InputCheckbox @bind-Value="showGrid" />
+        <span class="top-bar-text">Show Grid</span>
+
+        <input type="color" @bind-value="backgroundColor" />
+        <span class="top-bar-text">Background Color</span>
+
+        <button @onclick="Export" > Export </button>
+        <InputFile OnChange="HandleUpload" />
+    }
+
+
+</span>
+
+<table>
+
+    @for (int rowIndex = 0; rowIndex < grid.GetLength(0); rowIndex++)
+    {
+        <tr>
+            @for (int colIndex = 0; colIndex < grid.GetLength(1); colIndex++)
+            {
+                var cell = grid[rowIndex, colIndex];
+                int row = rowIndex;
+                int col = colIndex;
+                string classStr = cell.Stitched ? "stitched" : "not-stitched" ?? "not-stitched";
+                <td draggable class="@classStr" style="background-color:@cell.Color" onclick="CellClicked(@row,@col)" ondragenter="CellClicked(@row,@col)" />
+
+            }
+        </tr>
+
+    }
+</table>
+
+@code {
+    string color = "#fff";
+    Tile[,] grid = new Tile[0, 0];
+    bool showSettings = true;
+    public static event Action<(int, int)> OnCellClicked;
+    string gameState = "draw";
+    int cellSize = 10;
+    string backgroundColor = "aliceblue";
+    string gridColor = "black";
+    bool pickerActive = false;
+    bool showGrid = true;
+
+    async void Export()
+    {
+        Tile[] flat = new Tile[gridWidth * gridHeight];
+
+        int i = 0;
+        for (int rowIndex = 0; rowIndex < grid.GetLength(0); rowIndex++)
+        {
+            for (int colIndex = 0; colIndex < grid.GetLength(1); colIndex++)
+            {
+                flat[i] = grid[rowIndex, colIndex];
+                i++;
+            }
+        }
+
+        var saveFile = new SaveFile();
+        saveFile.Data = flat;
+        saveFile.Width = gridWidth;
+        saveFile.Height = gridHeight;
+
+        var data = JsonSerializer.SerializeToUtf8Bytes<SaveFile>(saveFile);
+        var stream = new MemoryStream(data);
+        var name = Guid.NewGuid().ToString();
+
+        using var streamRef = new DotNetStreamReference(stream);
+        await JSRuntime.InvokeVoidAsync("downloadFileFromStream", name, streamRef);
+    }
+
+    void HandleUpload()
+    {
+        
+    }
+
+    HashSet<string> colours = new()
+    {
+        "#FF0000",
+        "#FF6A00",
+        "#FFD800",
+        "#4CFF00",
+        "#0026FF",
+        "#B200FF",
+        "#FFFFFF",
+        "#000000",
+    };
+
+
+    int _gridHeight = 50;
+    int _gridWidth = 100;
+    int gridHeight
+    {
+        set
+        {
+            _gridHeight = value;
+            ResetGrid();
+        }
+        get
+        {
+            return _gridHeight;
+        }
+    }
+    int gridWidth
+    {
+        set
+        {
+            _gridWidth = value;
+            ResetGrid();
+        }
+        get
+        {
+            return _gridWidth;
+        }
+    }
+
+
+    private void CellClicked((int, int) xy)
+    {
+        var tile = grid[xy.Item1, xy.Item2];
+
+        if (pickerActive)
+        {
+            color = tile.Color ?? "#FFF";
+            pickerActive = false;
+            StateHasChanged();
+            return;
+        }
+
+        if(gameState == "draw")
+        {
+            tile.Color = color;
+        }
+        else
+        {
+            tile.Stitched = !tile.Stitched;        
+        }
+    
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public static void CellClicked(int x, int y)
+    {
+        OnCellClicked?.Invoke((x, y));
+    }
+
+    protected override void OnInitialized()
+    {
+        OnCellClicked += CellClicked;
+        Console.WriteLine("Initialized");
+        ResetGrid();
+
+    }
+
+    void ResetGrid()
+    {
+        grid = new Tile[gridHeight, gridWidth];
+        for (int i = 0; i < gridHeight; i++)
+        {
+            for (int j = 0; j < gridWidth; j++)
+            {
+                grid[i, j] = new();
+            }
+        }
+    }
+
+
+    public void Dispose()
+    {
+        OnCellClicked -= CellClicked;
+    }
+
+}
