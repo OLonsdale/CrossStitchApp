@@ -75,14 +75,14 @@
     <button disabled="@(gameState == "stitch")" @onclick="@(() => gameState = "stitch")"><i class="material-icons">grid_4x4</i></button>
 
     <span />
-    @foreach(var colorStr in colours)
+    @foreach(var colorStr in colors)
     {
         <button disabled="@(color == colorStr)" style="background-color: @colorStr" @onclick="@(() => color = colorStr)" />
     }
 
     <input type="color" @bind-value="color" />
-    <button @onclick="@(() => colours.Add(color))"><i class="material-icons">save</i></button>
-    <button @onclick="@(() => colours.Remove(color))"><i class="material-icons">delete</i></button>
+    <button @onclick="@(() => colors.Add(color))"><i class="material-icons">save</i></button>
+    <button @onclick="@(() => colors.Remove(color))"><i class="material-icons">delete</i></button>
 
     <button disabled="@(pickerActive)" @onclick="@(() => pickerActive = !pickerActive)"><i class="material-icons">colorize</i></button>
 
@@ -107,8 +107,10 @@
         <input type="color" @bind-value="backgroundColor" />
         <span class="top-bar-text">Background Color</span>
 
-        <button @onclick="Export" > Export </button>
-        <InputFile OnChange="HandleUpload" />
+        <button @onclick="Export"><i class="material-icons">download</i></button>
+        
+        <InputText @bind-Value="imported" DisplayName="Imported" />
+        <button @onclick="Import"><i class="material-icons">publish</i></button>
     }
 
 
@@ -144,9 +146,11 @@
     string gridColor = "black";
     bool pickerActive = false;
     bool showGrid = true;
+    string imported = "";
 
     async void Export()
     {
+        Console.WriteLine("Export Start");
         Tile[] flat = new Tile[gridWidth * gridHeight];
 
         int i = 0;
@@ -163,21 +167,62 @@
         saveFile.Data = flat;
         saveFile.Width = gridWidth;
         saveFile.Height = gridHeight;
+        saveFile.Colors = colors;
 
         var data = JsonSerializer.SerializeToUtf8Bytes<SaveFile>(saveFile);
         var stream = new MemoryStream(data);
         var name = Guid.NewGuid().ToString();
 
         using var streamRef = new DotNetStreamReference(stream);
+        Console.WriteLine("JS Invoke");
+
         await JSRuntime.InvokeVoidAsync("downloadFileFromStream", name, streamRef);
+        Console.WriteLine("Export Finished");
+
     }
 
-    void HandleUpload()
+    async Task Import()
     {
-        
+        Console.WriteLine("Import Clicked");
+
+        if (string.IsNullOrWhiteSpace(imported)) return;
+        Console.WriteLine("Import Started");
+
+        try
+        {
+            var saveFile = JsonSerializer.Deserialize<SaveFile>(imported);
+
+            gridHeight = saveFile.Height;
+            gridWidth = saveFile.Width;
+            colors = saveFile.Colors;
+
+            grid = new Tile[gridHeight, gridWidth];
+
+            int i = 0;
+            for (int rowIndex = 0; rowIndex < grid.GetLength(0); rowIndex++)
+            {
+                for (int colIndex = 0; colIndex < grid.GetLength(1); colIndex++)
+                {
+                    grid[rowIndex, colIndex] = saveFile.Data[i];
+                    i++;
+                }
+            }
+
+        }
+        catch (Exception)
+        {
+            Console.WriteLine("Import Errored");
+        }
+        finally
+        {
+            imported = "";
+            Console.WriteLine("Import Finished");
+        }
+
+
     }
 
-    HashSet<string> colours = new()
+    HashSet<string> colors = new()
     {
         "#FF0000",
         "#FF6A00",
