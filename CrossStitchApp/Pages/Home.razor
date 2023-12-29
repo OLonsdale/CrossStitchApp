@@ -1,14 +1,15 @@
 ﻿@page "/"
 @using CrossStitchApp.Models
 @using System.Text.Json
+@using MudBlazor.Utilities
 @inject IJSRuntime JSRuntime
+@inject IDialogService DialogService
 
 <PageTitle>Cross Stitch App</PageTitle>
-<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
 <style>
     html {
-        background-color: @backgroundColor;
+        background-color: @backgroundColor !important;
         font-family: sans-serif;
     }
 
@@ -18,26 +19,9 @@
     }
 
     td {
-
-        @(showGrid ? $"border: solid {gridColor} 1px;" : "")
+        @(showGrid ? $"border: solid {gridColor} 1px;" : "");
         min-width: @(cellSize)px;
         height: @(cellSize)px;
-    }
-
-    button {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        width: 30px;
-        height: 30px;
-        color: @gridColor;
-        background-color: @backgroundColor;
-    }
-
-    .top-bar-text {
-        color: @gridColor;
-        margin-left: 1ch;
-        margin-right: 1ch;
     }
 
     .stitched {
@@ -46,11 +30,19 @@
         background-repeat: no-repeat !important;
         background-position: center !important;
     }
+
+    .main{
+        max-height: 95vh;
+        max-width: 100vw;
+        overflow-x: scroll;
+        overflow-y: scroll;
+    }
+
 </style>
 
 <script>
     window.CellClicked = (x, y) => {
-        DotNet.invokeMethodAsync('CrossStitchApp', 'CellClicked', x, y)
+        DotNet.invokeMethod('CrossStitchApp', 'CellClicked', x, y)
     };
 </script>
 
@@ -68,160 +60,119 @@
     }
 </script>
 
-<span style="display:flex; flex-direction:row; ">
-    <button @onclick="@(() => ResetGrid())"><i class="material-icons">restart_alt</i></button>
+<MudToolBar WrapContent Dense  Style="width: 100vw; height: 4vh; overflow-y: scroll">
+    <MudButton Size="Size.Small" Color="Color.Surface" Variant="Variant.Filled" EndIcon="@Icons.Material.Filled.Brush" OnClick="@( () => SetGameState("draw"))">Draw</MudButton>
+    <MudButton Size="Size.Small" Color="Color.Surface" Variant="Variant.Filled" EndIcon="@CustomIcons.Stitch" OnClick="@( () => SetGameState("stitch"))">Stitch</MudButton>
 
-    <button disabled="@(gameState == "draw")" @onclick="@(() => gameState = "draw")"><i class="material-icons">brush</i></button>
-    <button disabled="@(gameState == "stitch")" @onclick="@(() => gameState = "stitch")"><i class="material-icons">grid_4x4</i></button>
+    <div class="ml-2" />
 
-    <span />
-    @foreach(var colorStr in colors)
+    <MudButton Size="Size.Small" Color="Color.Surface" Variant="Variant.Filled" EndIcon="@Icons.Material.Filled.Clear" OnClick="@( ()=> ResetGrid(true))">Clear</MudButton>
+    <MudButton Size="Size.Small" Color="Color.Surface" Variant="Variant.Filled" EndIcon="@Icons.Material.Filled.Undo" OnClick="Undo">Undo</MudButton>
+    <MudSpacer />
+    @if (gameState == "draw")
     {
-        <button disabled="@(color == colorStr)" style="background-color: @colorStr" @onclick="@(() => color = colorStr)" />
-    }
-
-    <input type="color" @bind-value="color" />
-    <button @onclick="@(() => colors.Add(color))"><i class="material-icons">save</i></button>
-    <button @onclick="@(() => colors.Remove(color))"><i class="material-icons">delete</i></button>
-
-    <button disabled="@(pickerActive)" @onclick="@(() => pickerActive = !pickerActive)"><i class="material-icons">colorize</i></button>
-
-
-
-    <button style="margin-left: 2ch; margin-right: 2ch;" @onclick="@(() => showSettings = !showSettings)"><i class="material-icons">settings</i></button>
-
-    @if (showSettings)
-    {
-
-        <span class="top-bar-text">Height:</span>
-        <input type="number" min="1" max="500" @bind-value="gridHeight" />
-        <span class="top-bar-text">Width:</span>
-        <input type="number" min="1" max="500" @bind-value="gridWidth" />
-
-        <span class="top-bar-text">Cell Size:</span>
-        <input type="number" min="1" max="50" @bind-value="cellSize" />
-
-        <InputCheckbox @bind-Value="showGrid" />
-        <span class="top-bar-text">Show Grid</span>
-
-        <input type="color" @bind-value="backgroundColor" />
-        <span class="top-bar-text">Background Color</span>
-
-        <button @onclick="Export"><i class="material-icons">download</i></button>
-        
-        <InputText @bind-Value="imported" DisplayName="Imported" />
-        <button @onclick="Import"><i class="material-icons">publish</i></button>
-    }
-
-
-</span>
-
-<table>
-
-    @for (int rowIndex = 0; rowIndex < grid.GetLength(0); rowIndex++)
-    {
-        <tr>
-            @for (int colIndex = 0; colIndex < grid.GetLength(1); colIndex++)
+        <div class="ml-2" >
+            <MudAvatar Style="cursor: pointer" Rounded="@(color != null)" Size="Size.Small" Elevation="5" @onclick="@(() => SetColor(null))"> <MudIconButton Icon="@CustomIcons.Erase" /> </MudAvatar>
+            @foreach (var colorCode in colors)
             {
-                var cell = grid[rowIndex, colIndex];
-                int row = rowIndex;
-                int col = colIndex;
-                string classStr = cell.Stitched ? "stitched" : "not-stitched" ?? "not-stitched";
-                <td draggable class="@classStr" style="background-color:@cell.Color" onclick="CellClicked(@row,@col)" ondragenter="CellClicked(@row,@col)" />
-
+                <MudAvatar Rounded="@(color != colorCode)" Size="Size.Small" Elevation="5" @onclick="@(() => SetColor(colorCode))" Style="@($"background-color: {colorCode};cursor: pointer;")" />
             }
-        </tr>
+            <MudAvatar Style="@($"background-color: {color};cursor: pointer;")" Rounded @onclick="@( () => colorsOpen = true)" Size="Size.Small" Elevation="5"><MudIcon Icon="@CustomIcons.ColorPallet" /></MudAvatar>
+        </div>
+        @* <MudButton Size="Size.Small" Variant="Variant.Outlined" EndIcon="@CustomIcons.FloodFill" OnClick="@(() => floodFillActive = true)">Flood Fill</MudButton> *@
 
     }
-</table>
+
+    <MudSpacer />
+
+    <MudIconButton Icon="@Icons.Material.Filled.Save" OnClick="@( () => savesOpen = true)" />
+    <MudIconButton Icon="@Icons.Material.Filled.Settings" OnClick="@( () => settingsOpen = true)" />
+
+</MudToolBar>
+
+<MudDialog @bind-IsVisible="settingsOpen">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Settings</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudNumericField Min="1" Max="500" @bind-Value="gridHeight" Label="Grid Height" />
+        <MudNumericField Min="1" Max="500" @bind-Value="gridWidth" Label="Grid Width" />
+        <MudNumericField Min="1" Max="500" @bind-Value="cellSize" Label="Cell Size" />
+        Background Colour:
+        <MudInput DisableUnderLine Class="ml-2" Style="width:10em; height: 5em" InputType="InputType.Color" @bind-Value="backgroundColor" />
+
+
+         <MudCheckBox @bind-Value="showGrid">Show Grid</MudCheckBox>
+     </DialogContent>
+ </MudDialog>
+
+ <MudDialog @bind-IsVisible="savesOpen">
+     <TitleContent><MudText Typo="Typo.h6">Saves</MudText></TitleContent>
+     <DialogContent>
+         <MudButton Variant="Variant.Outlined" OnClick="Export">Download</MudButton>
+         <MudButton Variant="Variant.Outlined" OnClick="Import">Import from below text</MudButton>
+         <MudTextField @bind-Value="imported" />
+     </DialogContent>
+ </MudDialog>
+
+ <MudDialog @bind-IsVisible="colorsOpen">
+     <TitleContent><MudText Typo="Typo.h6">Colours</MudText></TitleContent>
+     <DialogContent>
+         <MudStack AlignItems="AlignItems.Center">
+             <MudItem>
+                 @foreach (var colorCode in colors)
+                {
+                    <MudAvatar Rounded="@(color != colorCode)" Size="Size.Small" Elevation="5" @onclick="@(() => SetColor(colorCode))" Style="@($"background-color: {colorCode}; cursor: pointer")" />
+                }
+            </MudItem>
+
+            <MudInput DisableUnderLine Class="ml-2" Style="width:10em; height: 5em" InputType="InputType.Color" @bind-Value="color" />
+            
+                    @* <MudInput DisableUnderLine Style="width:10em; min-height: 5em" InputType="InputType.Color" @bind-Value="color" /> *@
+             <MudButton Size="Size.Small" Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.Save" OnClick="@(() => colors.Add(color))">Add To Pallet</MudButton>
+             <MudButton Size="Size.Small" Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.Delete" OnClick="@(() => colors.Remove(color))">Remove From Pallet</MudButton>
+             <MudButton Size="Size.Small" Variant="Variant.Outlined" EndIcon="@CustomIcons.ColorPicker" OnClick="@(() => pickerActive = true)">Pick Colour From Grid</MudButton>
+         </MudStack>
+     </DialogContent>
+ </MudDialog>
+
+ <div class="main">
+    <table >
+            @for (int rowIndex = 0; rowIndex < grid.GetLength(0); rowIndex++)
+        {
+            <tr>
+                @for (int colIndex = 0; colIndex < grid.GetLength(1); colIndex++)
+                {
+                    var cell = grid[rowIndex, colIndex];
+                    int row = rowIndex;
+                    int col = colIndex;
+                    string classStr = cell.Stitched ? "stitched" : "not-stitched" ?? "not-stitched";
+                    <td draggable class="@classStr" style="background-color:@cell.Color" onclick="CellClicked(@row,@col)" ondragenter="CellClicked(@row,@col)" />
+
+                }
+            </tr>
+        }
+    </table>
+ </div>
+
 
 @code {
-    string color = "#fff";
+    string? color = "#ffffff";
     Tile[,] grid = new Tile[0, 0];
-    bool showSettings = true;
+    string gridColor = "black";
+    int cellSize = 10;
+    string backgroundColor = "#ffffff";
+    bool showGrid = true;
     public static event Action<(int, int)> OnCellClicked;
     string gameState = "draw";
-    int cellSize = 10;
-    string backgroundColor = "aliceblue";
-    string gridColor = "black";
     bool pickerActive = false;
-    bool showGrid = true;
+    bool floodFillActive = false;
     string imported = "";
-
-    async void Export()
-    {
-        Console.WriteLine("Export Start");
-        Tile[] flat = new Tile[gridWidth * gridHeight];
-
-        int i = 0;
-        for (int rowIndex = 0; rowIndex < grid.GetLength(0); rowIndex++)
-        {
-            for (int colIndex = 0; colIndex < grid.GetLength(1); colIndex++)
-            {
-                flat[i] = grid[rowIndex, colIndex];
-                i++;
-            }
-        }
-
-        var saveFile = new SaveFile();
-        saveFile.Data = flat;
-        saveFile.Width = gridWidth;
-        saveFile.Height = gridHeight;
-        saveFile.Colors = colors;
-
-        var data = JsonSerializer.SerializeToUtf8Bytes<SaveFile>(saveFile);
-        var stream = new MemoryStream(data);
-        var name = Guid.NewGuid().ToString();
-
-        using var streamRef = new DotNetStreamReference(stream);
-        Console.WriteLine("JS Invoke");
-
-        await JSRuntime.InvokeVoidAsync("downloadFileFromStream", name, streamRef);
-        Console.WriteLine("Export Finished");
-
-    }
-
-    async Task Import()
-    {
-        Console.WriteLine("Import Clicked");
-
-        if (string.IsNullOrWhiteSpace(imported)) return;
-        Console.WriteLine("Import Started");
-
-        try
-        {
-            var saveFile = JsonSerializer.Deserialize<SaveFile>(imported);
-
-            gridHeight = saveFile.Height;
-            gridWidth = saveFile.Width;
-            colors = saveFile.Colors;
-
-            grid = new Tile[gridHeight, gridWidth];
-
-            int i = 0;
-            for (int rowIndex = 0; rowIndex < grid.GetLength(0); rowIndex++)
-            {
-                for (int colIndex = 0; colIndex < grid.GetLength(1); colIndex++)
-                {
-                    grid[rowIndex, colIndex] = saveFile.Data[i];
-                    i++;
-                }
-            }
-
-        }
-        catch (Exception)
-        {
-            Console.WriteLine("Import Errored");
-        }
-        finally
-        {
-            imported = "";
-            Console.WriteLine("Import Finished");
-        }
-
-
-    }
-
+    bool settingsOpen = false;
+    bool savesOpen = false;
+    bool colorsOpen = false;
+    List<SaveFile> Saves = new();
+    List<(Tile, string, bool)> History = new();
     HashSet<string> colors = new()
     {
         "#FF0000",
@@ -262,10 +213,102 @@
         }
     }
 
+    void SetGameState(string State)
+    {
+        gameState = State;
+    }
 
-    private void CellClicked((int, int) xy)
+    void SetColor(string? Color)
+    {
+        color = Color;
+    }
+
+    async void Export()
+    {
+        Console.WriteLine("Export Start");
+        Tile[] flat = new Tile[gridWidth * gridHeight];
+
+        int i = 0;
+        for (int rowIndex = 0; rowIndex < grid.GetLength(0); rowIndex++)
+        {
+            for (int colIndex = 0; colIndex < grid.GetLength(1); colIndex++)
+            {
+                flat[i] = grid[rowIndex, colIndex];
+                i++;
+            }
+        }
+
+        var saveFile = new SaveFile();
+        saveFile.Data = flat;
+        saveFile.Width = gridWidth;
+        saveFile.Height = gridHeight;
+        saveFile.Colors = colors;
+
+        var data = JsonSerializer.SerializeToUtf8Bytes<SaveFile>(saveFile);
+        var stream = new MemoryStream(data);
+        var name = Guid.NewGuid().ToString();
+
+        using var streamRef = new DotNetStreamReference(stream);
+        Console.WriteLine("JS Invoke");
+
+        await JSRuntime.InvokeVoidAsync("downloadFileFromStream", name, streamRef);
+        Console.WriteLine("Export Finished");
+
+    }
+
+    void Import()
+    {
+        Console.WriteLine("Import Clicked");
+
+        if (string.IsNullOrWhiteSpace(imported)) return;
+        Console.WriteLine("Import Started");
+
+        try
+        {
+            var saveFile = JsonSerializer.Deserialize<SaveFile>(imported);
+
+            gridHeight = saveFile.Height;
+            gridWidth = saveFile.Width;
+            colors = saveFile.Colors;
+
+            grid = new Tile[gridHeight, gridWidth];
+
+            int i = 0;
+            for (int rowIndex = 0; rowIndex < grid.GetLength(0); rowIndex++)
+            {
+                for (int colIndex = 0; colIndex < grid.GetLength(1); colIndex++)
+                {
+                    grid[rowIndex, colIndex] = saveFile.Data[i];
+                    i++;
+                }
+            }
+
+        }
+        catch (Exception)
+        {
+            Console.WriteLine("Import Errored");
+        }
+        finally
+        {
+            imported = "";
+            Console.WriteLine("Import Finished");
+        }
+
+
+    }
+
+    void Undo()
+    {
+        if (!History.Any()) return;
+        History.Last().Item1.Color = History.Last().Item2;
+        History.Last().Item1.Stitched = History.Last().Item3;
+        History.Remove(History.Last());
+    }
+
+    void CellClicked((int, int) xy)
     {
         var tile = grid[xy.Item1, xy.Item2];
+        if (tile == null) return;
 
         if (pickerActive)
         {
@@ -275,17 +318,43 @@
             return;
         }
 
-        if(gameState == "draw")
+        if (floodFillActive && gameState == "draw")
         {
+            FloodFill(xy.Item1, xy.Item2, color);
+            floodFillActive = false;
+            StateHasChanged();
+            return;
+        }
+
+        if (gameState == "draw")
+        {
+            if (tile.Color == color) return;
+            History.Add((tile, tile.Color, tile.Stitched));
             tile.Color = color;
         }
         else
         {
-            tile.Stitched = !tile.Stitched;        
+            History.Add((tile, tile.Color, tile.Stitched));
+            tile.Stitched = !tile.Stitched;
         }
-    
+
         StateHasChanged();
     }
+
+    void FloodFill(int x, int y, string targetColor)
+    {
+        List<Tile> neighbours = new();
+        int rows = grid.GetLength(0);
+        int cols = grid.GetLength(1);
+
+        if (x - 1 >= 0) neighbours.Add(grid[x - 1, y]);
+        if (y - 1 >= 0) neighbours.Add(grid[x, y - 1]);
+        if (y + 1 < cols) neighbours.Add(grid[x, y + 1]);
+        if (x + 1 < rows) neighbours.Add(grid[x + 1, y]);
+
+    }
+
+
 
     [JSInvokable]
     public static void CellClicked(int x, int y)
@@ -293,16 +362,26 @@
         OnCellClicked?.Invoke((x, y));
     }
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         OnCellClicked += CellClicked;
         Console.WriteLine("Initialized");
-        ResetGrid();
+        await ResetGrid(false);
 
     }
 
-    void ResetGrid()
+    async Task ResetGrid(bool confirm = true)
     {
+        if (confirm)
+        {
+            var res = await DialogService.ShowMessageBox(title: "Reset Page?", "Are you sure you wish to reset the page? All progress not saved will be lost!", "Yes", "No");
+
+            if(res != true)
+            {
+                return;
+            }   
+        }
+
         grid = new Tile[gridHeight, gridWidth];
         for (int i = 0; i < gridHeight; i++)
         {
