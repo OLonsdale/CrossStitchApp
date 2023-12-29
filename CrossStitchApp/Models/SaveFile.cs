@@ -9,8 +9,7 @@
         public int Width { get; set; }
         public int Height { get; set; }
         public HashSet<string> Colors { get; set; } = new();
-        public DateTime FirstSaved { get; set; }
-        public DateTime LastSaved { get; set; }
+        public DateTime SavedDate { get; set; }
 
     }
 }
