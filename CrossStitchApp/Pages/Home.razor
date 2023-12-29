@@ -65,32 +65,44 @@
 </script>
 
 <MudToolBar WrapContent Dense Style="width: 100vw; height: 9vh; overflow-y: scroll">
-     <MudButton Size="Size.Small" Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.Brush" OnClick="@( () => SetGameState("draw"))">Draw</MudButton>
-     <MudButton Size="Size.Small" Variant="Variant.Outlined" EndIcon="@CustomIcons.Stitch" OnClick="@( () => SetGameState("stitch"))">Stitch</MudButton>
+     <MudHidden Breakpoint="Breakpoint.SmAndDown">
+         <MudButton Disabled="@(gameState == "draw")" Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.Brush" OnClick="@( () => SetGameState("draw"))">Draw</MudButton>
+         <MudButton Disabled="@(gameState == "stitch")" Variant="Variant.Outlined" EndIcon="@CustomIcons.Stitch" OnClick="@( () => SetGameState("stitch"))">Stitch</MudButton>
+         <div class="ml-2" />
 
-     <div class="ml-2" />
+         <MudButton Disabled="@(!History.Any())" Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.Undo" OnClick="Undo">Undo</MudButton>
+         <MudButton Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.Clear" OnClick="@( ()=> ResetGrid(true))">Clear</MudButton>
+     </MudHidden>
+     <MudHidden Invert Breakpoint="Breakpoint.SmAndDown">
+         <MudIconButton Disabled="@(gameState == "draw")" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Brush" OnClick="@( () => SetGameState("draw"))" />
+         <MudIconButton Disabled="@(gameState == "stitch")" Variant="Variant.Outlined" Icon="@CustomIcons.Stitch" OnClick="@( () => SetGameState("stitch"))" />
+         <div class="ml-2" />
+         <MudIconButton Disabled="@(!History.Any())" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Undo" OnClick="Undo" />
+         <MudIconButton Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Clear" OnClick="@( ()=> ResetGrid(true))" />
+     </MudHidden>
 
-     <MudButton Size="Size.Small" Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.Clear" OnClick="@( ()=> ResetGrid(true))">Clear</MudButton>
-     <MudButton Size="Size.Small" Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.Undo" OnClick="Undo">Undo</MudButton>
      <MudSpacer />
      @if (gameState == "draw")
     {
         <div class="ml-2">
-            <MudAvatar Style="cursor: pointer" Rounded="@(color != null)" Size="Size.Small" Elevation="5" @onclick="@(() => SetColor(null))"> <MudIcon Icon="@CustomIcons.Erase" /> </MudAvatar>
-            @foreach (var colorCode in colors)
-            {
-                <MudAvatar Rounded="@(color != colorCode)" Size="Size.Small" Elevation="5" @onclick="@(() => SetColor(colorCode))" Style="@($"background-color: {colorCode};cursor: pointer;")" />
-            }
-            <MudAvatar Style="@($"background-color: {color};cursor: pointer;")" Rounded @onclick="@( () => colorsOpen = true)" Size="Size.Small" Elevation="5"><MudIcon Icon="@CustomIcons.ColorPallet" /></MudAvatar>
+            <MudAvatar Variant="Variant.Outlined" Style="@($"background-color: {color};cursor: pointer;")" Rounded @onclick="@( () => colorsOpen = true)" Elevation="5"><MudIcon Icon="@CustomIcons.ColorPallet" /></MudAvatar>
+            <MudAvatar Variant="Variant.Outlined" Style="cursor: pointer" Rounded="@(color != null)" Elevation="5" @onclick="@(() => SetColor(null))"> <MudIcon Icon="@CustomIcons.Erase" /> </MudAvatar>
+            <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                @foreach (var colorCode in colors)
+                {
+                    <MudAvatar Variant="Variant.Outlined" Rounded="@(color != colorCode)" Elevation="5" @onclick="@(() => SetColor(colorCode))" Style="@($"background-color: {colorCode};cursor: pointer;")" > <MudIcon /> </MudAvatar>
+                }
+            </MudHidden>
          </div>
-        @* <MudButton Size="Size.Small" Variant="Variant.Outlined" EndIcon="@CustomIcons.FloodFill" OnClick="@(() => floodFillActive = true)">Flood Fill</MudButton> *@
+        
+         @* <MudButton Size="Size.Small" Variant="Variant.Outlined" EndIcon="@CustomIcons.FloodFill" OnClick="@(() => floodFillActive = true)">Flood Fill</MudButton> *@
 
     }
 
     <MudSpacer />
 
-    <MudIconButton Icon="@Icons.Material.Filled.Save" OnClick="@( () => savesOpen = true)" />
-    <MudIconButton Icon="@Icons.Material.Filled.Settings" OnClick="@( () => settingsOpen = true)" />
+    <MudIconButton Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Save" OnClick="@( () => savesOpen = true)" />
+    <MudIconButton Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Settings" OnClick="@( () => settingsOpen = true)" />
 
 </MudToolBar>
 
@@ -118,13 +130,26 @@
      </DialogContent>
  </MudDialog>
 
- <MudDialog @bind-IsVisible="savesOpen">
+ <MudDialog @bind-IsVisible="importOpen">
      <TitleContent><MudText Typo="Typo.h6">Saves</MudText></TitleContent>
      <DialogContent>
-         <MudButton EndIcon="@Icons.Material.Filled.ImportExport" OnClick="@( ()=> importOpen = true)">Import</MudButton>
+         <MudTextField Variant="Variant.Outlined" @bind-Value="imported" />
+         <MudButton Disabled="@(String.IsNullOrWhiteSpace(imported))" Variant="Variant.Outlined" OnClick="Import">Import</MudButton>
+     </DialogContent>
+ </MudDialog>
+
+ <MudDialog @bind-IsVisible="savesOpen">
+     <TitleContent>
          <MudStack Row>
-            <MudTextField @bind-Value="newSaveName" Label="Save Name" />
-            <MudButton Variant="Variant.Outlined" OnClick="CreateSave">Save</MudButton>
+             <MudText Typo="Typo.h6">Saves</MudText>
+             <MudButton Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.ImportExport" OnClick="@( ()=> importOpen = true)">Import</MudButton>
+         </MudStack>
+     </TitleContent>
+     <DialogContent>
+         
+         <MudStack Row>
+            <MudTextField Variant="Variant.Outlined" @bind-Value="newSaveName" Label="Save Name" />
+            <MudButton Disabled="@(String.IsNullOrWhiteSpace(newSaveName))" Variant="Variant.Outlined" OnClick="CreateSave">Save</MudButton>
         </MudStack>
 
 
@@ -132,12 +157,13 @@
 
             @foreach (var save in Saves.OrderBy(x => x.SavedDate))
             {
-                <MudListItem>
+                <MudPaper Class="pa-1">
                     @save.Name : @save.SavedDate 
+                    <MudSpacer />
                     <MudIconButton Title="Load" Icon="@Icons.Material.Filled.FitScreen" OnClick="(() => LoadSave(save))" /> 
-                        <MudIconButton Title="Download" Icon="@Icons.Material.Filled.Download" OnClick="(() => DownloadSave(save))" /> 
-                            <MudIconButton Title="Delete" Icon="@Icons.Material.Filled.Delete" OnClick="(() => RemoveSave(save))" />
-                </MudListItem>
+                    <MudIconButton Title="Download" Icon="@Icons.Material.Filled.Download" OnClick="(() => DownloadSave(save))" /> 
+                    <MudIconButton Title="Delete" Icon="@Icons.Material.Filled.Delete" OnClick="(() => RemoveSave(save))" />
+                </MudPaper>
             }
 
         </MudList>
@@ -148,12 +174,14 @@
     <TitleContent><MudText Typo="Typo.h6">Colours</MudText></TitleContent>
     <DialogContent>
         <MudStack AlignItems="AlignItems.Center">
-            <MudItem>
+            <MudGrid>
                 @foreach (var colorCode in colors)
                 {
-                    <MudAvatar Rounded="@(color != colorCode)" Size="Size.Small" Elevation="5" @onclick="@(() => SetColor(colorCode))" Style="@($"background-color: {colorCode}; cursor: pointer")" />
+                    <MudItem>
+                        <MudAvatar Size="Size.Large" Rounded="@(color != colorCode)" Elevation="5" @onclick="@(() => SetColor(colorCode))" Style="@($"background-color: {colorCode}; cursor: pointer")" />
+                    </MudItem>
                 }
-            </MudItem>
+            </MudGrid>
 
             <MudInput DisableUnderLine Class="ml-2" Style="width:10em; height: 5em" InputType="InputType.Color" @bind-Value="color" />
 
@@ -161,6 +189,12 @@
              <MudButton Size="Size.Small" Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.Save" OnClick="@(() => colors.Add(color))">Add To Pallet</MudButton>
              <MudButton Size="Size.Small" Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.Delete" OnClick="@(() => colors.Remove(color))">Remove From Pallet</MudButton>
              <MudButton Size="Size.Small" Variant="Variant.Outlined" EndIcon="@CustomIcons.ColorPicker" OnClick="@(() => pickerActive = true)">Pick Colour From Grid</MudButton>
+             
+             <MudStack Row>
+                <MudButton Size="Size.Small" Variant="Variant.Outlined" Style="@($"background-color: {replaceColorFrom}")" OnClick="@(()=>setReplaceColorFrom = true)">From</MudButton>
+                <MudButton Size="Size.Small" Variant="Variant.Outlined" Style="@($"background-color: {replaceColorTo}")" OnClick="@(()=>setReplaceColorTo = true)">To</MudButton>
+                <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="@( () => ReplaceColors(replaceColorFrom, replaceColorTo))">Replace Colour</MudButton>
+            </MudStack>
          </MudStack>
      </DialogContent>
  </MudDialog>
@@ -219,19 +253,23 @@
     bool savesOpen = false;
     bool colorsOpen = false;
     bool importOpen = false;
+    bool setReplaceColorTo = false;
+    bool setReplaceColorFrom = false;
+    string replaceColorTo = "";
+    string replaceColorFrom = "";
     string newSaveAuthor = "";
     string newSaveName = "";
     List<SaveFile> Saves = new();
     List<(Tile, string, bool)> History = new();
     HashSet<string> colors = new()
     {
+        "#FFFFFF",
         "#FF0000",
         "#FF6A00",
         "#FFD800",
         "#4CFF00",
         "#0026FF",
         "#B200FF",
-        "#FFFFFF",
         "#000000",
     };
 
@@ -276,9 +314,40 @@
         gameState = State;
     }
 
+    void ReplaceColors(string replaceColorFrom, string replaceColorTo)
+    {
+        if (string.IsNullOrWhiteSpace(replaceColorFrom) || string.IsNullOrWhiteSpace(replaceColorTo)) return;
+
+        for (int rowIndex = 0; rowIndex < grid.GetLength(0); rowIndex++)
+        {
+            for (int colIndex = 0; colIndex < grid.GetLength(1); colIndex++)
+            {
+                if(grid[rowIndex, colIndex].Color == replaceColorFrom)
+                {
+                    grid[rowIndex, colIndex].Color = replaceColorTo;
+                }
+            }
+        }
+
+        replaceColorFrom = "";
+        replaceColorTo = "";
+    }
+
     void SetColor(string? Color)
     {
-        Console.WriteLine($"Changing color to {Color}");
+
+        if (setReplaceColorFrom)
+        {
+            replaceColorFrom = Color;
+            setReplaceColorFrom = false;
+        }
+
+        if (setReplaceColorTo)
+        {
+            replaceColorTo = Color;
+            setReplaceColorTo = false;
+        }
+
         color = Color;
         Console.WriteLine($"Changed color to {color}");
 
