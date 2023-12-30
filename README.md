@@ -49,3 +49,9 @@ An app for drawing your own cross stitch pattens, then crossing them off as you 
 - None cross-stitches, aka drawing lines
 
 - Improve dragging on PC, implement dragging on mobile
+
+- Accounts / shared progress in some way?
+
+- Clear stiches / toggle view stiches
+
+- Override saves, or multiple saves for a "drawing"
