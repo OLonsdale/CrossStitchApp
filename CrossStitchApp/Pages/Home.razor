@@ -1,6 +1,7 @@
 ﻿@page "/"
 @using CrossStitchApp.Models
 @using System.Text.Json
+@using System.Text.Json.Serialization
 @using MudBlazor.Utilities
 @inject IJSRuntime JSRuntime
 @inject IDialogService DialogService
@@ -21,6 +22,7 @@
     table {
         border-spacing: 0;
         border-collapse: collapse;
+        @(string.IsNullOrWhiteSpace(color) ? "cursor: url(\"eraser.svg\"), auto;" : "cursor: url(\"pencil.svg\"), auto;")
     }
 
     td {
@@ -42,15 +44,9 @@
         overflow-x: scroll;
         overflow-y: scroll;
         user-select: none;
-        cursor: crosshair;
+        
     }
 </style>
-
-<script>
-    window.CellClicked = (x, y) => {
-        DotNet.invokeMethod('CrossStitchApp', 'CellClicked', x, y)
-    };
-</script>
 
 <script>
     window.downloadFileFromStream = async (fileName, contentStreamReference) => {
@@ -87,12 +83,12 @@
 
      </MudHidden>
      <MudHidden Invert Breakpoint="Breakpoint.SmAndDown">
-         <MudButtonGroup Variant="Variant.Outlined" class="mr-2">
+         <MudButtonGroup Size="Size.Small" Variant="Variant.Outlined">
              <MudIconButton Disabled="@(gameState == "draw")" Icon="@Icons.Material.Filled.Brush" OnClick="@( () => SetGameState("draw"))" />
              <MudIconButton Disabled="@(gameState == "stitch")" Icon="@CustomIcons.Stitch" OnClick="@( () => SetGameState("stitch"))" />
          </MudButtonGroup>
          
-        <MudButtonGroup Variant="Variant.Outlined" class="mr-2">
+        <MudButtonGroup Size="Size.Small" Variant="Variant.Outlined">
              <MudIconButton Disabled="@(!History.Any())" Icon="@Icons.Material.Filled.Undo" OnClick="Undo" />
              <MudIconButton Icon="@Icons.Material.Filled.Clear" OnClick="@( ()=> ResetGrid(true))" />
         </MudButtonGroup>
@@ -121,8 +117,8 @@
     <MudSpacer />
 
     <MudButtonGroup Variant="Variant.Outlined">
-        <MudIconButton  Icon="@Icons.Material.Filled.RemoveRedEye" OnClick="@( () => viewDialogOpen = true)" />
 
+        <MudIconButton  Icon="@Icons.Material.Filled.Keyboard" OnClick="@( () => viewKeyBindingsDialogOpen = true)" />
         <MudIconButton  Icon="@Icons.Material.Filled.Save" OnClick="@( () => savesDialogOpen = true)" />
         <MudIconButton  Icon="@Icons.Material.Filled.Settings" OnClick="@( () => settingsDialogOpen = true)" />
     </MudButtonGroup>
@@ -134,19 +130,48 @@
         <MudText Typo="Typo.h6">Settings</MudText>
     </TitleContent>
     <DialogContent>
-        <MudNumericField Min="1" Max="500" @bind-Value="gridHeight" Label="Grid Height" />
-        <MudNumericField Min="1" Max="500" @bind-Value="gridWidth" Label="Grid Width" />
-        <MudNumericField Min="1" Max="500" @bind-Value="cellSize" Label="Cell Size" />
+        <MudStack Row>
+            <MudNumericField Min="1" Max="500" @bind-Value="gridHeight" Label="Grid Height" />
+            <MudNumericField Min="1" Max="500" @bind-Value="gridWidth" Label="Grid Width" />
+            <MudNumericField Min="1" Max="500" @bind-Value="cellSize" Label="Cell Size" />
+        </MudStack>
         Background Colour:
         <MudInput DisableUnderLine Class="ml-2" Style="width:10em; height: 5em" InputType="InputType.Color" @bind-Value="backgroundColor" />
+        <MudCheckBox @bind-Value="showGrid">Show Grid</MudCheckBox>
+        <MudCheckBox @bind-Value="showStitchesInDrawMode" > Show Stitches in Drawing Mode?</MudCheckBox>
 
+        <MudText Typo="Typo.h6">Click to hide colour from grid:</MudText>
+        <MudButton Variant="Variant.Outlined" OnClick="() => hiddenColors = new()">Show All</MudButton>
+        <MudButton Variant="Variant.Outlined" OnClick="InvertHiddenColors">Invert Selection</MudButton>
+            <MudGrid Class="my-2">
+                @foreach (var colorCode in colors)
+                {
+                    <MudItem>
+                    @if (hiddenColors.Contains(colorCode))
+                    {
+                        <MudAvatar Class="stitched" Variant="Variant.Outlined" Rounded Elevation="10" @onclick="() => ToggleHiddenColor(colorCode)" Style="@($"background-color: {colorCode}")" />
+                    }
+                    else
+                    {
+                        <MudAvatar Variant="Variant.Outlined" Rounded @onclick="() => ToggleHiddenColor(colorCode)" Style="@($"background-color: {colorCode}")" />
+                    }
+                </MudItem>
+                }
+            </MudGrid>
 
-         <MudCheckBox @bind-Value="showGrid">Show Grid</MudCheckBox>
+            <MudHidden Invert Breakpoint="Breakpoint.SmAndDown">
+                 <MudButtonGroup Variant="Variant.Outlined" class="mr-2">
+                     <MudButton EndIcon="@Icons.Material.Filled.SwipeUpAlt" OnClick="@(() => ShiftGrid(1,0))">up</MudButton>
+                     <MudButton EndIcon="@Icons.Material.Filled.SwipeDownAlt" OnClick="@(() => ShiftGrid(-1,0))">down</MudButton>         
+                     <MudButton EndIcon="@Icons.Material.Filled.SwipeLeftAlt" OnClick="@(() => ShiftGrid(0,1))">left</MudButton>
+                     <MudButton EndIcon="@Icons.Material.Filled.SwipeRightAlt" OnClick="@(() => ShiftGrid(0,-1))">right</MudButton>
+                 </MudButtonGroup>
+            </MudHidden>
      </DialogContent>
  </MudDialog>
 
  <MudDialog @bind-IsVisible="importDialogOpen">
-     <TitleContent><MudText Typo="Typo.h6">Saves</MudText></TitleContent>
+     <TitleContent><MudText Typo="Typo.h6">Import save from text</MudText></TitleContent>
      <DialogContent>
          <MudTextField Variant="Variant.Outlined" @bind-Value="imported" />
          <MudButton Disabled="@(String.IsNullOrWhiteSpace(imported))" Variant="Variant.Outlined" OnClick="Import">Import</MudButton>
@@ -214,38 +239,17 @@
      </DialogContent>
  </MudDialog>
 
-<MudDialog @bind-IsVisible="viewDialogOpen">
-<TitleContent><MudText Typo="Typo.h6">View</MudText></TitleContent>
+<MudDialog @bind-IsVisible="viewKeyBindingsDialogOpen">
+    <TitleContent><MudText Typo="Typo.h6">Key Bindings</MudText></TitleContent>
     <DialogContent>
-        <MudText Typo="Typo.h6">Click to hide colour from grid:</MudText>
-        <MudButton Variant="Variant.Outlined" OnClick="() => hiddenColors = new()">Show All</MudButton>
-        <MudButton Variant="Variant.Outlined" OnClick="InvertHiddenColors">Invert Selection</MudButton>
-            <MudGrid Class="my-2">
-                @foreach (var colorCode in colors)
-                {
-                    <MudItem>
-                    @if (hiddenColors.Contains(colorCode))
-                    {
-                        <MudAvatar Class="stitched" Variant="Variant.Outlined" Size="Size.Large" Rounded Elevation="10" @onclick="() => ToggleHiddenColor(colorCode)" Style="@($"background-color: {colorCode}")" />
-                    }
-                    else
-                    {
-                        <MudAvatar Variant="Variant.Outlined" Varient= Size="Size.Large" Rounded @onclick="() => ToggleHiddenColor(colorCode)" Style="@($"background-color: {colorCode}")" />
-                    }
-                </MudItem>
-                }
-            </MudGrid>
-
-            <MudText Typo="Typo.h6">Show Stitches in Drawing Mode? </MudText>
-            <MudCheckBox @bind-Value="showStitchesInDrawMode" />
-            <MudHidden Invert Breakpoint="Breakpoint.SmAndDown">
-                 <MudButtonGroup Variant="Variant.Outlined" class="mr-2">
-                     <MudButton EndIcon="@Icons.Material.Filled.SwipeUpAlt" OnClick="@(() => ShiftGrid(1,0))">up</MudButton>
-                     <MudButton EndIcon="@Icons.Material.Filled.SwipeDownAlt" OnClick="@(() => ShiftGrid(-1,0))">down</MudButton>         
-                     <MudButton EndIcon="@Icons.Material.Filled.SwipeLeftAlt" OnClick="@(() => ShiftGrid(0,1))">left</MudButton>
-                     <MudButton EndIcon="@Icons.Material.Filled.SwipeRightAlt" OnClick="@(() => ShiftGrid(0,-1))">right</MudButton>
-                 </MudButtonGroup>
-            </MudHidden>
+        <MudStack>
+            <MudText>x : switch mode</MudText>
+            <MudText>Space : Toggle draw/erase</MudText>
+            <MudText>=/- : Grid Size</MudText>
+            <MudText>[ / ] : Rows</MudText>
+            <MudText>{ / } : Cols</MudText>
+            <MudText>Arrow Keys : Shift content on grid</MudText>
+        </MudStack>
     </DialogContent>
 </MudDialog>
 
@@ -275,10 +279,13 @@
 
 
 @code {
+
+    DotNetObjectReference<Home> keystrokeHandlerObjectReference;
+
     string? color = "#ffffff";
     Tile[][] grid = new Tile[0][];
     string gridColor = "black";
-    int cellSize = 10;
+    int cellSize = 15;
     string backgroundColor_ = "#f7f7d7";
     string backgroundColor
     {
@@ -304,11 +311,13 @@
     bool pickerActive = false;
     bool floodFillActive = false;
     string imported = "";
+
     bool settingsDialogOpen = false;
     bool savesDialogOpen = false;
     bool colorsDialogOpen = false;
     bool importDialogOpen = false;
     bool viewDialogOpen = false;
+    bool viewKeyBindingsDialogOpen = false;
 
     bool showStitchesInDrawMode = true;
 
@@ -368,6 +377,11 @@
         {
             return _gridWidth;
         }
+    }
+
+    private void HandleKeystroke(KeyboardEventArgs e)
+    {
+        Console.WriteLine(e.Code);
     }
 
     void SetGameState(string State)
@@ -526,6 +540,77 @@
         History.Remove(History.Last());
     }
 
+    [JSInvokable("KeyPress")]
+    public void KeyPress(string keyEventJson)
+    {
+        var keyEvent = System.Text.Json.JsonSerializer.Deserialize<KeyEvent>(keyEventJson);
+        Console.WriteLine($"Code: {keyEvent.code}");
+
+    switch (keyEvent.key)
+    {
+        case "ArrowLeft":
+            ShiftGrid(0, 1);
+            StateHasChanged();
+            break;
+        case "ArrowRight":
+            ShiftGrid(0, -1);
+            StateHasChanged();
+            break;
+        case "ArrowUp":
+            ShiftGrid(1, 0);
+            StateHasChanged();
+            break;
+        case "ArrowDown":
+            ShiftGrid(-1, 0);
+            StateHasChanged();
+            break;
+        case "}":
+            gridHeight++;
+            StateHasChanged();
+            break;
+        case "{":
+            gridHeight--;
+            StateHasChanged();
+            break;
+        case "]":
+            gridWidth++;
+            StateHasChanged();
+            break;
+        case "[":
+            gridWidth--;
+            StateHasChanged();
+            break;
+        case "=":
+            cellSize++;
+            StateHasChanged();
+            break;
+        case "-":
+            cellSize--;
+            StateHasChanged();
+            break;
+        case "x":
+            SetGameState(gameState == "draw" ? "stitch" : "draw");
+            StateHasChanged();
+            break;
+        case "Space":
+            if (string.IsNullOrWhiteSpace(lastColor))
+            {
+                lastColor = color;
+                SetColor(null);
+            }
+            else
+            {
+                SetColor(lastColor);
+                lastColor = null;
+            }
+            StateHasChanged();
+            break;
+
+        }
+
+    }
+
+    string? lastColor = "";
 
     [JSInvokable]
     public static void CellClicked(int x, int y)
@@ -583,30 +668,7 @@
 
     }
 
-
-    public void Dispose()
-    {
-        OnCellClicked -= CellClicked;
-    }
-
-
-    protected override async Task OnInitializedAsync()
-    {
-        OnCellClicked += CellClicked;
-        Console.WriteLine("Initialized");
-        await ResetGrid(false);
-        Saves = await localStorage.GetItemAsync<List<SaveFile>>("saves") ?? new();
-        Console.WriteLine($"Loaded {Saves.Count} saves from local storage");
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            await JSRuntime.InvokeVoidAsync("initializeDrawing");
-        }
-    }
-
+    
     async Task ResetGrid(bool confirm = true)
     {
         if (confirm)
@@ -651,9 +713,6 @@
         grid = newGrid;
     }
 
-
-
-
     async void ShiftGrid(int offsetY, int offsetX)
     {
         var newGrid = new Tile[gridHeight][];
@@ -692,5 +751,42 @@
     void InvertHiddenColors()
     {
         hiddenColors = colors.Where(x => !hiddenColors.Contains(x)).ToHashSet<string>();
+    }
+
+
+    public void Dispose()
+    {
+        OnCellClicked -= CellClicked;
+        keystrokeHandlerObjectReference.Dispose();
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        Console.WriteLine("Initialized");
+        OnCellClicked += CellClicked;
+        await ResetGrid(false);
+        Saves = await localStorage.GetItemAsync<List<SaveFile>>("saves") ?? new();
+        Console.WriteLine($"Loaded {Saves.Count} saves from local storage");
+        keystrokeHandlerObjectReference = DotNetObjectReference.Create(this);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("initializeDrawing");
+            await JSRuntime.InvokeVoidAsync("setupAdvancedHotkeys", keystrokeHandlerObjectReference);
+        }
+    }
+
+            private class KeyEvent
+    {
+        public string key { get; set; }
+        public string code { get; set; }
+        public bool shift { get; set; }
+        public bool ctrl { get; set; }
+        public bool alt { get; set; }
+        public bool meta { get; set; }
     }
 }

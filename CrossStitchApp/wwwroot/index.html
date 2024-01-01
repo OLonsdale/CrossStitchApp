@@ -29,49 +29,94 @@
 
     <script src="_framework/blazor.webassembly.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+
     <script>
+window.initializeDrawing = () => {
+    let isDrawing = false;
+    let lastProcessedCell = null;
+    let startPosition = null;
+    const moveThreshold = 10; // Pixels to move before considering it a scroll
 
-    window.initializeDrawing = () => {
-        let isMouseDown = false;
-        let lastProcessedCell = null;
+    const table = document.getElementById('drawingTable');
+    if (!table) {
+        console.error('Table with ID "drawingTable" not found.');
+        return;
+    }
 
-        const table = document.getElementById('drawingTable');
-        if (!table) {
-            console.error('Table with ID "drawingTable" not found.');
+    table.addEventListener('pointerdown', function(event) {
+        startPosition = { x: event.clientX, y: event.clientY };
+        isDrawing = false; // Reset drawing state
+    });
+
+    document.addEventListener('pointerup', function() {
+        isDrawing = false;
+        lastProcessedCell = null;
+        startPosition = null;
+    });
+
+    table.addEventListener('pointermove', function(event) {
+        if (!startPosition) return;
+
+        const dx = event.clientX - startPosition.x;
+        const dy = event.clientY - startPosition.y;
+        const distanceMoved = Math.sqrt(dx * dx + dy * dy);
+
+        if (!isDrawing && distanceMoved > moveThreshold) {
+            // Moved enough to be considered a scroll, not a draw
             return;
         }
 
-        table.addEventListener('pointerdown', function(event) {
-            isMouseDown = true;
-            processCell(event);
-        });
+        if (!isDrawing) {
+            isDrawing = true; // Start drawing
+        }
 
-        document.addEventListener('pointerup', function() {
-            isMouseDown = false;
-            lastProcessedCell = null;
-        });
+        processCell(event);
+        event.preventDefault(); // Prevent scrolling while drawing
+    });
 
-        table.addEventListener('pointermove', function(event) {
-            if (isMouseDown) {
-                processCell(event);
-            }
-        });
+    function processCell(event) {
+        const cell = event.target.closest('td');
+        if (cell && cell.parentElement) {
+            const x = Array.from(cell.parentElement.children).indexOf(cell);
+            const y = Array.from(cell.parentElement.parentElement.children).indexOf(cell.parentElement);
 
-        function processCell(event) {
-            const cell = event.target.closest('td');
-            if (cell && cell.parentElement) {
-                const x = Array.from(cell.parentElement.children).indexOf(cell);
-                const y = Array.from(cell.parentElement.parentElement.children).indexOf(cell.parentElement);
+            const currentCellId = `${x}-${y}`;
 
-                const currentCellId = `${x}-${y}`;
-
-                if (lastProcessedCell !== currentCellId) {
-                    lastProcessedCell = currentCellId;
-                    DotNet.invokeMethodAsync('CrossStitchApp', 'CellClicked', y,x);
-                }
+            if (lastProcessedCell !== currentCellId) {
+                lastProcessedCell = currentCellId;
+                DotNet.invokeMethodAsync('CrossStitchApp', 'CellClicked', y, x);
             }
         }
-    };
+    }
+};
+
+    </script>
+
+    <script>
+window.setupAdvancedHotkeys = function (dotnetHelper) {
+    let lastEventTime = Date.now();
+    const eventInterval = 100; // Interval in milliseconds
+
+    window.addEventListener("keydown", (e) => {
+        const currentTime = Date.now();
+        if (currentTime - lastEventTime >= eventInterval) {
+            lastEventTime = currentTime;
+            handleKeyEvent(e);
+        }
+    });
+
+    function handleKeyEvent(e) {
+        const keyEvent = {
+            key: e.key,
+            code: e.code,
+            shift: e.shiftKey,
+            ctrl: e.ctrlKey,
+            alt: e.altKey,
+            meta: e.metaKey
+        };
+        dotnetHelper.invokeMethodAsync("KeyPress", JSON.stringify(keyEvent));
+    }
+};
 
     </script>
 
