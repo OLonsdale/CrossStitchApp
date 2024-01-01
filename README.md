@@ -24,6 +24,9 @@ An app for drawing your own cross stitch pattens, then crossing them off as you 
 
 - Toggle visibility of any colour
 
+- Hot Keys
+
+
 ## Technologies
 
 - DotNet 8 Blazor Wasm 
@@ -38,8 +41,6 @@ An app for drawing your own cross stitch pattens, then crossing them off as you 
 
 - Industry standard colour pallets
 
-- Hot Keys
-
 - Flood Fill
 
 - Thicker cell border every 10 cells?
@@ -51,8 +52,6 @@ An app for drawing your own cross stitch pattens, then crossing them off as you 
 - Improve dragging on PC, implement dragging on mobile
 
 - Accounts / shared progress in some way?
-
-- Clear stiches / toggle view stiches
 
 - Override saves, or multiple saves for a "drawing"
 
