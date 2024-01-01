@@ -9,7 +9,7 @@
 <PageTitle>Cross Stitch App</PageTitle>
 
 <MudThemeProvider Theme="theme" />
-<MudDialogProvider />
+<MudDialogProvider CloseButton="true" />
 <MudSnackbarProvider />
 
 <style>
@@ -41,6 +41,8 @@
         max-width: 100vw;
         overflow-x: scroll;
         overflow-y: scroll;
+        user-select: none;
+        cursor: crosshair;
     }
 </style>
 
@@ -66,26 +68,43 @@
 
 <MudToolBar WrapContent Dense Style="width: 100vw; height: 9vh; overflow-y: scroll">
      <MudHidden Breakpoint="Breakpoint.SmAndDown">
-         <MudButton Disabled="@(gameState == "draw")" Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.Brush" OnClick="@( () => SetGameState("draw"))">Draw</MudButton>
-         <MudButton Disabled="@(gameState == "stitch")" Variant="Variant.Outlined" EndIcon="@CustomIcons.Stitch" OnClick="@( () => SetGameState("stitch"))">Stitch</MudButton>
-         <div class="ml-2" />
+         <MudButtonGroup  Variant="Variant.Outlined" class="mr-2">
+             <MudButton Disabled="@(gameState == "draw")" EndIcon="@Icons.Material.Filled.Brush" OnClick="@( () => SetGameState("draw"))">Draw</MudButton>
+             <MudButton Disabled="@(gameState == "stitch")"  EndIcon="@CustomIcons.Stitch" OnClick="@( () => SetGameState("stitch"))">Stitch</MudButton>
+         </MudButtonGroup>
 
-         <MudButton Disabled="@(!History.Any())" Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.Undo" OnClick="Undo">Undo</MudButton>
-         <MudButton Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.Clear" OnClick="@( ()=> ResetGrid(true))">Clear</MudButton>
+         <MudButtonGroup Variant="Variant.Outlined" class="mr-2">
+             <MudButton Disabled="@(!History.Any())"  EndIcon="@Icons.Material.Filled.Undo" OnClick="Undo">Undo</MudButton>
+             <MudButton EndIcon="@Icons.Material.Filled.Clear" OnClick="@( ()=> ResetGrid(true))">Clear</MudButton>
+         </MudButtonGroup>
+
+         <MudButtonGroup Variant="Variant.Outlined" class="mr-2">
+             <MudButton EndIcon="@Icons.Material.Filled.SwipeUpAlt" OnClick="@(() => ShiftGrid(1,0))">up</MudButton>
+             <MudButton EndIcon="@Icons.Material.Filled.SwipeDownAlt" OnClick="@(() => ShiftGrid(-1,0))">down</MudButton>         
+             <MudButton EndIcon="@Icons.Material.Filled.SwipeLeftAlt" OnClick="@(() => ShiftGrid(0,1))">left</MudButton>
+             <MudButton EndIcon="@Icons.Material.Filled.SwipeRightAlt" OnClick="@(() => ShiftGrid(0,-1))">right</MudButton>
+         </MudButtonGroup>
+
      </MudHidden>
      <MudHidden Invert Breakpoint="Breakpoint.SmAndDown">
-         <MudIconButton Disabled="@(gameState == "draw")" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Brush" OnClick="@( () => SetGameState("draw"))" />
-         <MudIconButton Disabled="@(gameState == "stitch")" Variant="Variant.Outlined" Icon="@CustomIcons.Stitch" OnClick="@( () => SetGameState("stitch"))" />
-         <div class="ml-2" />
-         <MudIconButton Disabled="@(!History.Any())" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Undo" OnClick="Undo" />
-         <MudIconButton Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Clear" OnClick="@( ()=> ResetGrid(true))" />
+         <MudButtonGroup Variant="Variant.Outlined" class="mr-2">
+             <MudIconButton Disabled="@(gameState == "draw")" Icon="@Icons.Material.Filled.Brush" OnClick="@( () => SetGameState("draw"))" />
+             <MudIconButton Disabled="@(gameState == "stitch")" Icon="@CustomIcons.Stitch" OnClick="@( () => SetGameState("stitch"))" />
+         </MudButtonGroup>
+         
+        <MudButtonGroup Variant="Variant.Outlined" class="mr-2">
+             <MudIconButton Disabled="@(!History.Any())" Icon="@Icons.Material.Filled.Undo" OnClick="Undo" />
+             <MudIconButton Icon="@Icons.Material.Filled.Clear" OnClick="@( ()=> ResetGrid(true))" />
+        </MudButtonGroup>
+
+         
      </MudHidden>
 
      <MudSpacer />
      @if (gameState == "draw")
     {
         <div class="ml-2">
-            <MudAvatar Variant="Variant.Outlined" Style="@($"background-color: {color};cursor: pointer;")" Rounded @onclick="@( () => colorsOpen = true)" Elevation="5"><MudIcon Icon="@CustomIcons.ColorPallet" /></MudAvatar>
+            <MudAvatar Variant="Variant.Outlined" Style="@($"background-color: {color};cursor: pointer;")" Rounded @onclick="@( () => colorsDialogOpen = true)" Elevation="5"><MudIcon Icon="@CustomIcons.ColorPallet" /></MudAvatar>
             <MudAvatar Variant="Variant.Outlined" Style="cursor: pointer" Rounded="@(color != null)" Elevation="5" @onclick="@(() => SetColor(null))"> <MudIcon Icon="@CustomIcons.Erase" /> </MudAvatar>
             <MudHidden Breakpoint="Breakpoint.SmAndDown">
                 @foreach (var colorCode in colors)
@@ -101,12 +120,16 @@
 
     <MudSpacer />
 
-    <MudIconButton Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Save" OnClick="@( () => savesOpen = true)" />
-    <MudIconButton Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Settings" OnClick="@( () => settingsOpen = true)" />
+    <MudButtonGroup Variant="Variant.Outlined">
+        <MudIconButton  Icon="@Icons.Material.Filled.RemoveRedEye" OnClick="@( () => viewDialogOpen = true)" />
+
+        <MudIconButton  Icon="@Icons.Material.Filled.Save" OnClick="@( () => savesDialogOpen = true)" />
+        <MudIconButton  Icon="@Icons.Material.Filled.Settings" OnClick="@( () => settingsDialogOpen = true)" />
+    </MudButtonGroup>
 
 </MudToolBar>
 
-<MudDialog @bind-IsVisible="settingsOpen">
+<MudDialog @bind-IsVisible="settingsDialogOpen">
     <TitleContent>
         <MudText Typo="Typo.h6">Settings</MudText>
     </TitleContent>
@@ -122,15 +145,7 @@
      </DialogContent>
  </MudDialog>
 
- <MudDialog @bind-IsVisible="importOpen">
-     <TitleContent><MudText Typo="Typo.h6">Saves</MudText></TitleContent>
-     <DialogContent>
-         <MudTextField Variant="Variant.Outlined" @bind-Value="imported" />
-         <MudButton Variant="Variant.Outlined" OnClick="Import">Import</MudButton>
-     </DialogContent>
- </MudDialog>
-
- <MudDialog @bind-IsVisible="importOpen">
+ <MudDialog @bind-IsVisible="importDialogOpen">
      <TitleContent><MudText Typo="Typo.h6">Saves</MudText></TitleContent>
      <DialogContent>
          <MudTextField Variant="Variant.Outlined" @bind-Value="imported" />
@@ -138,11 +153,11 @@
      </DialogContent>
  </MudDialog>
 
- <MudDialog @bind-IsVisible="savesOpen">
+ <MudDialog @bind-IsVisible="savesDialogOpen">
      <TitleContent>
          <MudStack Row>
              <MudText Typo="Typo.h6">Saves</MudText>
-             <MudButton Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.ImportExport" OnClick="@( ()=> importOpen = true)">Import</MudButton>
+             <MudButton Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.ImportExport" OnClick="@( ()=> importDialogOpen = true)">Import</MudButton>
          </MudStack>
      </TitleContent>
      <DialogContent>
@@ -155,7 +170,7 @@
 
         <MudList>
 
-            @foreach (var save in Saves.OrderBy(x => x.SavedDate))
+            @foreach (var save in Saves.OrderByDescending(x => x.SavedDate))
             {
                 <MudPaper Class="pa-1">
                     @save.Name : @save.SavedDate 
@@ -170,7 +185,7 @@
     </DialogContent>
 </MudDialog>
 
-<MudDialog @bind-IsVisible="colorsOpen">
+<MudDialog @bind-IsVisible="colorsDialogOpen">
     <TitleContent><MudText Typo="Typo.h6">Colours</MudText></TitleContent>
     <DialogContent>
         <MudStack AlignItems="AlignItems.Center">
@@ -199,18 +214,58 @@
      </DialogContent>
  </MudDialog>
 
+<MudDialog @bind-IsVisible="viewDialogOpen">
+<TitleContent><MudText Typo="Typo.h6">View</MudText></TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.h6">Click to hide colour from grid:</MudText>
+        <MudButton Variant="Variant.Outlined" OnClick="() => hiddenColors = new()">Show All</MudButton>
+        <MudButton Variant="Variant.Outlined" OnClick="InvertHiddenColors">Invert Selection</MudButton>
+            <MudGrid Class="my-2">
+                @foreach (var colorCode in colors)
+                {
+                    <MudItem>
+                    @if (hiddenColors.Contains(colorCode))
+                    {
+                        <MudAvatar Class="stitched" Variant="Variant.Outlined" Size="Size.Large" Rounded Elevation="10" @onclick="() => ToggleHiddenColor(colorCode)" Style="@($"background-color: {colorCode}")" />
+                    }
+                    else
+                    {
+                        <MudAvatar Variant="Variant.Outlined" Varient= Size="Size.Large" Rounded @onclick="() => ToggleHiddenColor(colorCode)" Style="@($"background-color: {colorCode}")" />
+                    }
+                </MudItem>
+                }
+            </MudGrid>
+
+            <MudText Typo="Typo.h6">Show Stitches in Drawing Mode? </MudText>
+            <MudCheckBox @bind-Value="showStitchesInDrawMode" />
+            <MudHidden Invert Breakpoint="Breakpoint.SmAndDown">
+                 <MudButtonGroup Variant="Variant.Outlined" class="mr-2">
+                     <MudButton EndIcon="@Icons.Material.Filled.SwipeUpAlt" OnClick="@(() => ShiftGrid(1,0))">up</MudButton>
+                     <MudButton EndIcon="@Icons.Material.Filled.SwipeDownAlt" OnClick="@(() => ShiftGrid(-1,0))">down</MudButton>         
+                     <MudButton EndIcon="@Icons.Material.Filled.SwipeLeftAlt" OnClick="@(() => ShiftGrid(0,1))">left</MudButton>
+                     <MudButton EndIcon="@Icons.Material.Filled.SwipeRightAlt" OnClick="@(() => ShiftGrid(0,-1))">right</MudButton>
+                 </MudButtonGroup>
+            </MudHidden>
+    </DialogContent>
+</MudDialog>
+
  <div class="main">
-     <table>
-         @for (int rowIndex = 0; rowIndex < grid.GetLength(0); rowIndex++)
+     <table id="drawingTable">
+         @for (int rowIndex = 0; rowIndex < gridHeight; rowIndex++)
         {
             <tr>
-                @for (int colIndex = 0; colIndex < grid.GetLength(1); colIndex++)
+                @for (int colIndex = 0; colIndex < gridWidth; colIndex++)
                 {
-                    var cell = grid[rowIndex, colIndex];
+                    var cell = grid[rowIndex][colIndex];
                     int row = rowIndex;
                     int col = colIndex;
                     string classStr = cell.Stitched ? "stitched" : "not-stitched" ?? "not-stitched";
-                    <td draggable class="@classStr" style="background-color:@cell.Color" onclick="CellClicked(@row,@col)" ondragenter="CellClicked(@row,@col)" />
+                    if(!showStitchesInDrawMode && gameState == "draw")
+                    {
+                        classStr = "not-stitched";
+                    }
+                    string colorStr = (hiddenColors.Contains(cell.Color ?? "") ? "" : cell.Color );
+                    <td  class="@classStr" style="background-color:@colorStr"  />
 
                 }
             </tr>
@@ -220,11 +275,11 @@
 
 
 @code {
-    string? color = "#FFFFFF";
-    Tile[,] grid = new Tile[0, 0];
+    string? color = "#ffffff";
+    Tile[][] grid = new Tile[0][];
     string gridColor = "black";
     int cellSize = 10;
-    string backgroundColor_ = "#F7F7D7";
+    string backgroundColor_ = "#f7f7d7";
     string backgroundColor
     {
         set
@@ -249,10 +304,14 @@
     bool pickerActive = false;
     bool floodFillActive = false;
     string imported = "";
-    bool settingsOpen = false;
-    bool savesOpen = false;
-    bool colorsOpen = false;
-    bool importOpen = false;
+    bool settingsDialogOpen = false;
+    bool savesDialogOpen = false;
+    bool colorsDialogOpen = false;
+    bool importDialogOpen = false;
+    bool viewDialogOpen = false;
+
+    bool showStitchesInDrawMode = true;
+
     bool setReplaceColorTo = false;
     bool setReplaceColorFrom = false;
     string replaceColorTo = "";
@@ -263,21 +322,23 @@
     List<(Tile, string, bool)> History = new();
     HashSet<string> colors = new()
     {
-        "#FFFFFF",
-        "#FF0000",
-        "#FF6A00",
-        "#FFD800",
-        "#4CFF00",
-        "#0026FF",
-        "#B200FF",
+        "#ffffff",
+        "#ff0000",
+        "#ff6a00",
+        "#ffd800",
+        "#4cff00",
+        "#0026ff",
+        "#b200ff",
         "#000000",
     };
+    HashSet<string> hiddenColors = new();
+
 
     MudTheme theme = new()
         {
             Palette = new PaletteLight()
             {
-                Background = "F7F7D7"
+                Background = "f7f7d7"
             }
         };
 
@@ -289,7 +350,7 @@
         set
         {
             _gridHeight = value;
-            ResetGrid();
+            ResizeGrid();
         }
         get
         {
@@ -301,7 +362,7 @@
         set
         {
             _gridWidth = value;
-            ResetGrid();
+            ResizeGrid();
         }
         get
         {
@@ -318,13 +379,13 @@
     {
         if (string.IsNullOrWhiteSpace(replaceColorFrom) || string.IsNullOrWhiteSpace(replaceColorTo)) return;
 
-        for (int rowIndex = 0; rowIndex < grid.GetLength(0); rowIndex++)
+        for (int rowIndex = 0; rowIndex < gridHeight; rowIndex++)
         {
-            for (int colIndex = 0; colIndex < grid.GetLength(1); colIndex++)
+            for (int colIndex = 0; colIndex < gridWidth; colIndex++)
             {
-                if(grid[rowIndex, colIndex].Color == replaceColorFrom)
+                if(grid[rowIndex][colIndex].Color == replaceColorFrom)
                 {
-                    grid[rowIndex, colIndex].Color = replaceColorTo;
+                    grid[rowIndex][colIndex].Color = replaceColorTo;
                 }
             }
         }
@@ -349,7 +410,7 @@
         }
 
         color = Color;
-        Console.WriteLine($"Changed color to {color}");
+        Console.WriteLine($"Changed color to {color ?? "eraser"}");
 
     }
 
@@ -386,20 +447,9 @@
     async Task CreateSave()
     {
         if (String.IsNullOrWhiteSpace(newSaveName)) return;
-        Tile[] flat = new Tile[gridWidth * gridHeight];
-
-        int i = 0;
-        for (int rowIndex = 0; rowIndex < grid.GetLength(0); rowIndex++)
-        {
-            for (int colIndex = 0; colIndex < grid.GetLength(1); colIndex++)
-            {
-                flat[i] = grid[rowIndex, colIndex];
-                i++;
-            }
-        }
 
         var saveFile = new SaveFile();
-        saveFile.Data = flat;
+        saveFile.Data = grid;
         saveFile.Width = gridWidth;
         saveFile.Height = gridHeight;
         saveFile.Colors = colors;
@@ -426,17 +476,7 @@
             _gridWidth = saveFile.Width;
             colors = saveFile.Colors;
 
-            grid = new Tile[gridHeight, gridWidth];
-
-            int i = 0;
-            for (int rowIndex = 0; rowIndex < grid.GetLength(0); rowIndex++)
-            {
-                for (int colIndex = 0; colIndex < grid.GetLength(1); colIndex++)
-                {
-                    grid[rowIndex, colIndex] = saveFile.Data[i];
-                    i++;
-                }
-            }
+            grid = saveFile.Data;
 
         }
         catch (Exception)
@@ -486,9 +526,16 @@
         History.Remove(History.Last());
     }
 
-    void CellClicked((int, int) xy)
+
+    [JSInvokable]
+    public static void CellClicked(int x, int y)
     {
-        var tile = grid[xy.Item1, xy.Item2];
+        OnCellClicked?.Invoke((x, y));
+    }
+
+    async void CellClicked((int, int) xy)
+    {
+        var tile = grid[xy.Item1][xy.Item2];
         if (tile == null) return;
 
         if (pickerActive)
@@ -520,28 +567,28 @@
         }
 
         StateHasChanged();
+
     }
 
     void FloodFill(int x, int y, string targetColor)
     {
         List<Tile> neighbours = new();
-        int rows = grid.GetLength(0);
-        int cols = grid.GetLength(1);
+        int rows = gridHeight;
+        int cols = gridWidth;
 
-        if (x - 1 >= 0) neighbours.Add(grid[x - 1, y]);
-        if (y - 1 >= 0) neighbours.Add(grid[x, y - 1]);
-        if (y + 1 < cols) neighbours.Add(grid[x, y + 1]);
-        if (x + 1 < rows) neighbours.Add(grid[x + 1, y]);
+        if (x - 1 >= 0) neighbours.Add(grid[x - 1][y]);
+        if (y - 1 >= 0) neighbours.Add(grid[x][y - 1]);
+        if (y + 1 < cols) neighbours.Add(grid[x][y + 1]);
+        if (x + 1 < rows) neighbours.Add(grid[x + 1][y]);
 
     }
 
 
-
-    [JSInvokable]
-    public static void CellClicked(int x, int y)
+    public void Dispose()
     {
-        OnCellClicked?.Invoke((x, y));
+        OnCellClicked -= CellClicked;
     }
+
 
     protected override async Task OnInitializedAsync()
     {
@@ -550,6 +597,14 @@
         await ResetGrid(false);
         Saves = await localStorage.GetItemAsync<List<SaveFile>>("saves") ?? new();
         Console.WriteLine($"Loaded {Saves.Count} saves from local storage");
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("initializeDrawing");
+        }
     }
 
     async Task ResetGrid(bool confirm = true)
@@ -564,20 +619,78 @@
             }
         }
 
-        grid = new Tile[gridHeight, gridWidth];
+        grid = new Tile[gridHeight][];
         for (int i = 0; i < gridHeight; i++)
         {
+            grid[i] = new Tile[gridWidth];
             for (int j = 0; j < gridWidth; j++)
             {
-                grid[i, j] = new();
+                grid[i][j] = new Tile();
             }
         }
     }
 
-
-    public void Dispose()
+    async void ResizeGrid()
     {
-        OnCellClicked -= CellClicked;
+        var newGrid = new Tile[gridHeight][];
+        for (int i = 0; i < gridHeight; i++)
+        {
+            newGrid[i] = new Tile[gridWidth];
+            for (int j = 0; j < gridWidth; j++)
+            {
+                try
+                {
+                    newGrid[i][j] = grid[i][j];
+                }
+                catch (Exception)
+                {
+                    newGrid[i][j] = new();
+                }
+            }
+        }
+        grid = newGrid;
     }
 
+
+
+
+    async void ShiftGrid(int offsetY, int offsetX)
+    {
+        var newGrid = new Tile[gridHeight][];
+        for (int i = 0; i < gridHeight; i++)
+        {
+            newGrid[i] = new Tile[gridWidth];
+            for (int j = 0; j < gridWidth; j++)
+            {
+                try
+                {
+                    newGrid[i][j] = grid[i+offsetY][j+offsetX];
+                }
+                catch (Exception)
+                {
+                    newGrid[i][j] = new();
+                }
+            }
+        }
+        grid = newGrid;
+        StateHasChanged();
+    }
+
+    void ToggleHiddenColor(string color)
+    {
+        if(hiddenColors.Contains(color) == true)
+        {
+
+            hiddenColors.Remove(color);
+        }
+        else
+        {
+            hiddenColors.Add(color);
+        }
+    }
+
+    void InvertHiddenColors()
+    {
+        hiddenColors = colors.Where(x => !hiddenColors.Contains(x)).ToHashSet<string>();
+    }
 }

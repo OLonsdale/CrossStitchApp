@@ -17,6 +17,12 @@ An app for drawing your own cross stitch pattens, then crossing them off as you 
 - Save and export progress
 
 - Responsive UI
+ 
+- Shift Image in grid
+
+- Resize grid without resetting
+
+- Toggle visibility of any colour
 
 ## Technologies
 
@@ -32,17 +38,11 @@ An app for drawing your own cross stitch pattens, then crossing them off as you 
 
 - Industry standard colour pallets
 
-- Shift Image in grid
-
-- Resize grid without losing progress
-
 - Hot Keys
 
 - Flood Fill
 
-- Show Single Colour at a time
-
-- Thicker cell border every 10 pxls?
+- Thicker cell border every 10 cells?
 
 - Import from file, not text
 
@@ -55,3 +55,7 @@ An app for drawing your own cross stitch pattens, then crossing them off as you 
 - Clear stiches / toggle view stiches
 
 - Override saves, or multiple saves for a "drawing"
+
+- Line Tool
+
+- Export to real image? To PDF?

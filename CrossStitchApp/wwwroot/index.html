@@ -29,6 +29,52 @@
 
     <script src="_framework/blazor.webassembly.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <script>
+
+    window.initializeDrawing = () => {
+        let isMouseDown = false;
+        let lastProcessedCell = null;
+
+        const table = document.getElementById('drawingTable');
+        if (!table) {
+            console.error('Table with ID "drawingTable" not found.');
+            return;
+        }
+
+        table.addEventListener('pointerdown', function(event) {
+            isMouseDown = true;
+            processCell(event);
+        });
+
+        document.addEventListener('pointerup', function() {
+            isMouseDown = false;
+            lastProcessedCell = null;
+        });
+
+        table.addEventListener('pointermove', function(event) {
+            if (isMouseDown) {
+                processCell(event);
+            }
+        });
+
+        function processCell(event) {
+            const cell = event.target.closest('td');
+            if (cell && cell.parentElement) {
+                const x = Array.from(cell.parentElement.children).indexOf(cell);
+                const y = Array.from(cell.parentElement.parentElement.children).indexOf(cell.parentElement);
+
+                const currentCellId = `${x}-${y}`;
+
+                if (lastProcessedCell !== currentCellId) {
+                    lastProcessedCell = currentCellId;
+                    DotNet.invokeMethodAsync('CrossStitchApp', 'CellClicked', y,x);
+                }
+            }
+        }
+    };
+
+    </script>
+
 </body>
 
 </html>
